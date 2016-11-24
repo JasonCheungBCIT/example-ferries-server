@@ -6,7 +6,7 @@
  *
  * ------------------------------------------------------------------------
  */
-require APPPATH . '/libraries/Rest_controller.php';
+require APPPATH . '/third_party/restful/libraries/Rest_controller.php';
 
 class Ports extends Rest_Controller {
 
@@ -16,7 +16,7 @@ class Ports extends Rest_Controller {
 		$this->load->model('ferryschedule');
 	}
 
-	// Handle an incoming GET ... return a list of ports
+	// Handle an incoming GET ... 	returns a list of ports
 	function index_get()
 	{
 		$this->response($this->ferryschedule->getPorts(), 200);

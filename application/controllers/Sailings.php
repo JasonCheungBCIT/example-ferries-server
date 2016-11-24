@@ -1,29 +1,61 @@
 <?php
 
 /**
- * REST server for ferry schedule operations.
+ * XML-RPC server for ferry schedule operations.
  * This one manages sailings.
  * 
- * NOT a good fit ... this should be XML-RPC
  * ------------------------------------------------------------------------
  */
-require APPPATH . '/libraries/Rest_controller.php';
-
-class Sailings extends Rest_Controller {
+class Sailings extends CI_Controller {
 
 	function __construct()
 	{
 		parent::__construct();
+
+		// get ready for XML-RPC ***
+		$this->load->library(['xmlrpc', 'xmlrpcs']);
+
 		$this->load->model('ferryschedule');
 	}
 
-// Handle an incoming GET ... return a list of ports
-	function index_get()
+	// Entry point to the XML-RPC server
+	function index()
 	{
-		$from = $this->get('from');
-		$from = $this->get('to');
-		$this->response($result = $this->ferryschedule->findSailings($from, $to), 200);
+		$config['functions']['lookup'] = array('function' => 'Sailings.find_sailings');
+		$config['object'] = $this;
+
+		$this->xmlrpcs->initialize($config);
+		$this->xmlrpcs->serve();
 	}
 
-// The other REST methods are not handled, since we are not doing maintenance
+	// Find all the sailings between two ports
+	function find_sailings($request)
+	{
+		// get the origin & destination parameters
+		$parms = $request->output_parameters();
+		$from = $parms[0];
+		$to = $parms[1];
+
+		// extract data from the real model
+		$result = $this->ferryschedule->findSailings($from, $to);
+
+		// we have to wrap each result row properly
+		foreach ($result as $sailing)
+		{
+			$sailings[] = array($sailing, 'struct');
+		}
+		
+		// display an error if there are no sailings
+		// NOTE: This would be the proper way to handle this, with the client handling the error
+		// I have left the client assuming that an empty set of sailings is how they tell that you can't get from A to B
+		if (empty($sailings))
+		{
+			return $this->xmlrpc->send_error_message(1, "Sorry, but you can't get there from here!");
+		}
+
+		// and then wrap the whole thing!
+		$response = array($sailings, 'struct');
+		return $this->xmlrpc->send_response($response);
+	}
+
 }
